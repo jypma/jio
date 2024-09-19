@@ -1,0 +1,8 @@
+.bloop
+.bsp
+.metals
+target
+.classpath
+.project
+.settings
+metals.sbt
