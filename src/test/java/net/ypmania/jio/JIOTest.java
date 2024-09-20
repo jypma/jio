@@ -45,8 +45,15 @@ public class JIOTest extends FreeSpec {
                 var res = service.provide(new Dependencies("hello", 15));
                 assertThat(Runtime.getDefault().unsafeGet(res).get(), equalTo("hello / 15"));
             });
-        });
 
+            test("should map from another type into the environment", () -> {
+                var service = JIO.<String> service().map(s -> Integer.parseInt(s));
+                var withDeps = service.<Dependencies>provideFrom(d -> d.string());
+                var res = withDeps.provide(new Dependencies("15", 42));
+                assertThat(Runtime.getDefault().unsafeGet(res).get(), equalTo(15));                
+            });
+        });
+        
         section("catchAllU", () -> {
             test("should handle all errors", () -> {
                 JIO<Object, String, Integer> failure = JIO.fail("42");
