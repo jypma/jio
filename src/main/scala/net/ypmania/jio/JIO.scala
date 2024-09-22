@@ -16,6 +16,14 @@ class UJIO[R <: Object, A <: Object](private[jio] val zio: ZIO[Dependencies, Not
     service[R1]().map(fn).flatMapU(r => provide(r))
   }
 
+  def provideFrom[R1 <: Object, E](jio: JIO[R1, E, R]): JIO[R1,E,A] = {
+    jio.flatMapU(r => provide(r))
+  }
+
+  def provideFrom[R1 <: Object](jio: UJIO[R1, R]): UJIO[R1,A] = {
+    jio.flatMapU(r => provide(r))
+  }
+
   def flatMapU[U <: Object, U1 <: U, R1 >: R <: Object](f: CheckedFunction1[A, UJIO[R1,U1]]): UJIO[R,U] = {
     new UJIO(zio.flatMap { a =>
       f.apply(a).zio
@@ -42,16 +50,20 @@ class JIO[R <: Object, E, A <: Object](private[jio] val zio: ZIO[Dependencies, E
     service[R1]().map(fn).flatMap(r => provide(r))
   }
 
+  def provideFrom[R1 <: Object, E1 <: E](jio: JIO[R1, E1, R]): JIO[R1,E,A] = {
+    jio.flatMap(r => provide(r))
+  }
+
+  def provideFrom[R1 <: Object](jio: UJIO[R1, R]): JIO[R1,E,A] = {
+    jio.flatMap(r => provide(r))
+  }
+
   def flatMap[U <: Object, E1 >: E, U1 <: U, R1 >: R <: Object](f: CheckedFunction1[A, JIO[R1,? <: E1,U1]]): JIO[R,E1,U] = {
-    new JIO(zio.flatMap { a =>
-      f.apply(a).zio
-    })
+    new JIO(zio.flatMap { a => f.apply(a).zio })
   }
 
   def flatMapU[U <: Object, U1 <: U, R1 >: R <: Object](f: CheckedFunction1[A, UJIO[R1, U1]]): JIO[R,E,U] = {
-    new JIO(zio.flatMap { a =>
-      f.apply(a).zio
-    })
+    new JIO(zio.flatMap { a => f.apply(a).zio })
   }
 
   def map[U <: Object, U1 <: U](f: CheckedFunction1[A, U1]): JIO[R,E,U] = {

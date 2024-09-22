@@ -50,7 +50,15 @@ public class JIOTest extends FreeSpec {
                 var service = JIO.<String> service().map(s -> Integer.parseInt(s));
                 var withDeps = service.<Dependencies>provideFrom(d -> d.string());
                 var res = withDeps.provide(new Dependencies("15", 42));
-                assertThat(Runtime.getDefault().unsafeGet(res).get(), equalTo(15));                
+                assertThat(Runtime.getDefault().unsafeGet(res).get(), equalTo(15));
+            });
+
+            test("should map from a JIO, then depending on its dependencies", () -> {
+                var service1 = JIO.<String> service().map(s -> Integer.parseInt(s));
+                var service2 = JIO.<Integer> service().map(i -> i * 2);
+                var withDeps = service2.provideFrom(service1);
+                var res = withDeps.provide("15");
+                assertThat(Runtime.getDefault().unsafeGet(res).get(), equalTo(30));
             });
         });
         
