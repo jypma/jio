@@ -2,7 +2,7 @@ package net.ypmania.jio
 
 class Scope (private val zioScope: zio.Scope) {
   def addFinalizer(run: UJIO[Object, ?]): UJIO[Object, Object] = {
-    JIO.wrapU(zioScope.addFinalizer(run.unwrapZIO).as(new Object))
+    JIO.wrapU(zioScope.addFinalizer(JIO.unwrap(run)).as(new Object))
   }
 }
 

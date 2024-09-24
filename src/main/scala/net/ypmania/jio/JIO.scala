@@ -12,7 +12,7 @@ import java.util.function.BiFunction
 
 class UJIO[R <: Object, A <: Object](private[jio] val zio: ZIO[Dependencies, Nothing, A]) {
   def provide(deps: R): UJIO[Object, A] = {
-    new UJIO(zio.provideLayer(ZLayer.succeed(Dependencies(deps))))
+    new UJIO(Dependencies.provide(zio, deps))
   }
 
   def provideFrom[R1 <: Object](fn: CheckedFunction1[R1,R]): UJIO[R1, A] = {
@@ -44,13 +44,11 @@ class UJIO[R <: Object, A <: Object](private[jio] val zio: ZIO[Dependencies, Not
   }
 
   def as[U <: Object](value: U): UJIO[R,U] = map(a => value)
-
-  private[jio] def unwrapZIO(implicit ev: Object =:= R): ZIO[Any, Nothing, A] = zio.provideLayer(ZLayer.succeed(new JIO.Dependencies(new Object)))
 }
 
 class JIO[R <: Object, E, A <: Object](private[jio] val zio: ZIO[Dependencies, E, A]) {
   def provide(deps: R): JIO[Object, E, A] = {
-    new JIO(zio.provideLayer(ZLayer.succeed(Dependencies(deps))))
+    new JIO(Dependencies.provide(zio, deps))
   }
 
   def provideFrom[R1 <: Object](fn: CheckedFunction1[R1,R]): JIO[R1, E, A] = {
@@ -82,24 +80,38 @@ class JIO[R <: Object, E, A <: Object](private[jio] val zio: ZIO[Dependencies, E
   }
 
   def as[U <: Object](value: U): JIO[R,E,U] = map(a => value)
-
-  private[jio] def unwrapZIO(implicit ev: Object =:= R): ZIO[Any, E, A] = zio.provideLayer(ZLayer.succeed(new JIO.Dependencies(new Object)))
 }
 
 object JIO {
   private[jio] case class Dependencies(content: Object)
+  private[jio] object Dependencies {
+    def provide[R <: Object, E, A <: Object](zio: ZIO[Dependencies,E,A], dependencies: R): ZIO[Any,E,A] = {
+      zio.provideLayer(ZLayer.succeed(Dependencies(dependencies)))
+    }
 
-  private[jio] def wrapU[A <: Object](zio: ZIO[Any, Nothing, A]) = new UJIO(zio)
+    def discard[E, A <: Object](zio: ZIO[Dependencies,E,A]): ZIO[Any, E, A] = {
+      zio.provideLayer(ZLayer.succeed(Dependencies(new Object)))
+    }
 
-  def service[R <: Object](): UJIO[R, R] = new UJIO(ZIO.service[Dependencies].map(_.content.asInstanceOf[R]))
+    def make[R <: Object](): ZIO[Dependencies,Nothing,R] = ZIO.service[Dependencies].map(_.content.asInstanceOf[R])
+  }
 
-  def succeed[R <: Object, A <: Object](value: A): UJIO[R,A] = new UJIO(ZIO.succeed(value))
 
-  def run[R <: Object, A <: Object](fn: Supplier[A]): UJIO[R,A] = new UJIO(ZIO.succeed(fn.get()))
+  def tryRun[A <: Object](fn: CheckedFunction0[A]): JIO[Object,Throwable,A] = new JIO(ZIO.attempt(fn.apply()))
 
-  def tryRun[R <: Object, A <: Object](fn: CheckedFunction0[A]): JIO[R,Throwable,A] = new JIO(ZIO.attempt(fn.apply()))
+  def fail[E, A <: Object](failure: E): JIO[Object,E,A] = new JIO(ZIO.fail(failure))
 
-  def fail[R <: Object, E, A <: Object](failure: E): JIO[R,E,A] = new JIO(ZIO.fail(failure))
+  // -------------------- Java-only code from here --------------------------
+  def service[R <: Object](): UJIO[R, R] = new UJIO(Dependencies.make[R]())
+
+  def unwrap[A <: Object](jio: UJIO[Object, A]): ZIO[Any, Nothing, A] = Dependencies.discard(jio.zio)
+  def unwrap[A <: Object, E](jio: JIO[Object, E, A]): ZIO[Any, E, A] = Dependencies.discard(jio.zio)
+
+  def wrapU[A <: Object](zio: ZIO[Any, Nothing, A]): UJIO[Object, A] = new UJIO(zio)
+
+  def succeed[A <: Object](value: A): UJIO[Object,A] = wrapU(ZIO.succeed(value))
+
+  def run[A <: Object](fn: Supplier[A]): UJIO[Object,A] = wrapU(ZIO.succeed(fn.get()))
 
   def acquireRelease[R >: Scope <: Object, E, A <: Object](acquire: JIO[? >: R, E, A], release: Function[A, UJIO[? >: R, ?]]): JIO[Scope, E, A] = {
     service[Scope]().flatMap { scope =>
