@@ -23,8 +23,7 @@ class Runtime {
     zio.Unsafe.unsafe { implicit unsafe =>
       Future.fromCompletableFuture(
         asJava(zio.Runtime.default.unsafe.runToFuture(
-          jio.zio
-            .provideLayer(zio.ZLayer.succeed(new JIO.Dependencies(new Object)))
+          jio.unwrapZIO
         ).future).toCompletableFuture()
       )
     }

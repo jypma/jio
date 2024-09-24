@@ -5,6 +5,8 @@ import de.tobiasroeser.lambdatest.junit5.FreeSpec;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class JIOTest extends FreeSpec {
     interface HasString {
         String string();
@@ -17,7 +19,12 @@ public class JIOTest extends FreeSpec {
         return JIO.<T> service();
     }
 
+    private <T extends HasString & Scope.Has> UJIO<T,T> dependenciesWithScope() {
+        return JIO.<T> service();
+    }
+
     record Dependencies(String string, Integer integer) implements HasString, HasInteger {}
+    record DependenciesWithScope(String string, Scope scope) implements HasString, Scope.Has {}
 
     {
         section("flatMap", () -> {
@@ -67,6 +74,33 @@ public class JIOTest extends FreeSpec {
                 JIO<Object, String, Integer> failure = JIO.fail("42");
                 var res = failure.catchAllU(s -> JIO.succeed(Integer.parseInt(s)));
                 assertThat(Runtime.getDefault().unsafeGet(res).get(), equalTo(42));
+            });
+        });
+
+        section("scope", () -> {
+            test("acquireRelease should release at end of scope", () -> {
+                var counter = new AtomicInteger();
+                var service = JIO.acquireRelease(JIO.run(() -> {
+                    counter.incrementAndGet();
+                    return counter;
+                }), c -> JIO.run(() -> c.decrementAndGet()));
+                var result = new int[1];
+                var res = JIO.scoped(
+                    service.map(c -> {
+                        result[0] = c.get();
+                        return c;
+                    })
+                );
+                Runtime.getDefault().unsafeGet(res).get();
+                assertThat(result[0], equalTo(1));
+            });
+
+            test("scoped should combine with other service dependencies", () -> {
+                var scopedService = dependenciesWithScope().map(d -> d.string());
+                var res = JIO.scoped(
+                    scopedService, (String s, Scope c) -> new DependenciesWithScope(s, c)
+                ).provide("Hello");
+                assertThat(Runtime.getDefault().unsafeGet(res).get(), equalTo("Hello"));
             });
         });
     }
