@@ -33,10 +33,17 @@ public class JIOTest extends FreeSpec {
                 assertThat(Runtime.runtime.unsafeRun(res).get(), equalTo(15));
             });
 
-            test("should generalize  error type", () -> {
+            test("should (can) generalize error type", () -> {
                 JIO<Object, Integer, String> fail1 = JIO.fail(42);
                 JIO<Object, Long, String> fail2 = JIO.fail(42L);
-                JIO<Object, Number, String> check = JIO.<Object,Number,String>cast(fail1).flatMap(s -> fail2);
+
+                // Unfortunately, Java cannot seem to symmetrically infer the highest subtype of two types,
+                // unless we move flatMap to a static method.
+                @SuppressWarnings("unused")
+                JIO<Object, Number, String> compileCheck = JIO.<Object,Number,String>cast(fail1).flatMap(s -> fail2);
+
+                @SuppressWarnings("unused")
+                JIO<Object, Number, String> compileCheck2 = JIO.flatMap(fail1, s -> fail2);
             });
         });
 

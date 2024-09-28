@@ -9,7 +9,7 @@ import scala.runtime.Nothing$;
 import zio.Trace;
 import zio.ZIO;
 
-/** An program that can succeed or fail.
+/** An program (also called an effect) that can succeed or fail.
     @param R The program's environment (dependencies it needs), or Object if no dependencies are needed.
     @param E The result of the program failing.
     @param A The result of the program succeeding.
@@ -54,6 +54,12 @@ public class JIO<R,E,A> {
     @SuppressWarnings("unchecked")
     public static <R,E,A> JIO<R,E,A> cast(JIO<? super R, ? extends E, ? extends A> jio) {
         return (JIO<R, E, A>) jio;
+    }
+
+    /** Runs another effect with the result of this one. This is functionally equivalent to this.flatMap(fn), but the static
+     * variant has a more flexible combination of error and environment types in the Java language. */
+    public static <R,E,A,I> JIO<R,E,A> flatMap(JIO<? super R, ? extends E, I> jio, Function<? super I, JIO<? super R, ? extends E, ? extends A>> fn) {
+        return new JIO<>(jio.zio.flatMap(a -> fn.apply(a).zio, Trace.empty()));
     }
 
     /** Returns a JIO managing a resource that requires cleanup, requiring an environment.
