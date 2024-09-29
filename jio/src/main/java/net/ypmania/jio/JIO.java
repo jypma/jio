@@ -4,6 +4,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import net.ypmania.jio.function.CheckedFunction0;
+import net.ypmania.jio.function.CheckedRunnable;
 import net.ypmania.ziojava.Dependencies;
 import scala.runtime.Nothing$;
 import zio.Trace;
@@ -49,6 +51,17 @@ public class JIO<R,E,A> {
 
     public static <A,E> ZIO<Object,E,A> unwrap(JIO<Object,E,A> jio) {
         return Dependencies.unsafeUnwrap(jio.zio);
+    }
+
+    public static <A, X extends Throwable> JIO<Object, X, A> attempt(CheckedFunction0<? extends A, ? extends X> fn) {
+        return wrap(ZIO.attempt(u -> fn.unchecked().get(), Trace.empty())).<A>unsafeCast().<X>unsafeCastError();
+    }
+
+    public static <X extends Throwable> JIO<Object, X, Object> attempt(CheckedRunnable<? extends X> fn) {
+        return wrap(ZIO.attempt(u -> {
+            fn.unchecked().run();
+            return null;
+        }, Trace.empty())).<Object>unsafeCast().<X>unsafeCastError();
     }
 
     @SuppressWarnings("unchecked")
@@ -196,10 +209,14 @@ public class JIO<R,E,A> {
         return map(a -> value);
     }
 
-    /** Casts to <U>, which must be a supertype of <A>. Unsafe since <U super A> is not possible to declare in Java. */
     @SuppressWarnings("unchecked")
     <U> JIO<R,E,U> unsafeCast() {
         return (JIO<R,E,U>) this;
+    }
+
+    @SuppressWarnings("unchecked")
+    <E1> JIO<R,E1,A> unsafeCastError() {
+        return (JIO<R,E1,A>) this;
     }
 
     /// ------ only for JIO --------

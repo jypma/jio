@@ -5,9 +5,10 @@ import de.tobiasroeser.lambdatest.junit5.FreeSpec;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class JIOTest extends FreeSpec {
+public final class JIOTest extends FreeSpec {
     interface HasString {
         String string();
     }
@@ -25,6 +26,13 @@ public class JIOTest extends FreeSpec {
 
     record Dependencies(String string, Integer integer) implements HasString, HasInteger {}
     record DependenciesWithScope(String string, Scope scope) implements HasString, Scope.Has {}
+
+    private int failIntWithIOException() throws IOException {
+        throw new IOException("simulated failure");
+    }
+    private void failVoidWithIOException() throws IOException {
+        throw new IOException("simulated failure");
+    }
 
     {
         section("flatMap", () -> {
@@ -75,7 +83,19 @@ public class JIOTest extends FreeSpec {
                 assertThat(Runtime.runtime.unsafeRun(res).get(), equalTo(30));
             });
         });
-        
+
+        section("attempt", () -> {
+            test("should wrap a checked exception from a function", () -> {
+                @SuppressWarnings("unused")
+                JIO<Object,IOException,Integer> jio = JIO.attempt(() -> failIntWithIOException());
+            });
+
+            test("should wrap a checked exception from a runnable", () -> {
+                @SuppressWarnings("unused")
+                JIO<Object,IOException,Object> jio = JIO.attempt(() -> failVoidWithIOException());
+            });
+        });
+
         section("catchAllU", () -> {
             test("should handle all errors", () -> {
                 JIO<Object, String, Integer> failure = JIO.fail("42");
