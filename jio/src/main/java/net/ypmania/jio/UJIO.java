@@ -56,6 +56,11 @@ public class UJIO<R,A> {
     <U> UJIO<R,U> unsafeCast() {
         return (UJIO<R,U>) this;
     }
+
+    public <B> UJIO<R,B> repeat(Schedule<? super R, ? super A, ? extends B> schedule) {
+        return new UJIO<>(zio.repeat(() -> Schedule.<R,A,B>cast(schedule).schedule, Trace.empty()));
+    }
+
     /// ------ only for UJIO --------
 
     @SuppressWarnings("unchecked")

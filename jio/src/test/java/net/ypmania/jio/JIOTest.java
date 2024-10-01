@@ -130,5 +130,28 @@ public final class JIOTest extends FreeSpec {
                 assertThat(Runtime.runtime.unsafeRun(res).get(), equalTo("Hello"));
             });
         });
+
+        section("schedule", () -> {
+            test("repeat should repeat", () -> {
+                var counter = new AtomicInteger();
+                var effect = JIO.succeedWith(() -> counter.incrementAndGet()).repeat(Schedule.recurs(2));
+                Runtime.runtime.unsafeRun(effect).get();
+                // Effect runs once on its own, twice from the recurs.
+                assertThat(counter.get(), equalTo(3));
+            });
+
+            test("retry should retry", () -> {
+                var counter = new AtomicInteger();
+                var effect = JIO
+                    .succeedWith(() -> counter.incrementAndGet())
+                    .flatMap(d -> JIO.fail(42))
+                    .retry(Schedule.recurs(2))
+                    .catchAllU(i -> JIO.empty());
+                Runtime.runtime.unsafeRun(effect).get();
+                // Effect runs once on its own, twice from the recurs.
+                assertThat(counter.get(), equalTo(3));
+            });
+
+        });
     }
 }

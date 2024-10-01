@@ -17,6 +17,10 @@ import zio.ZIO;
     @param A The result of the program succeeding.
 */
 public class JIO<R,E,A> {
+    public static UJIO<Object,Object> empty() {
+        return succeed(null);
+    }
+
     public static <R> UJIO<R,R> environment() {
         return new UJIO<R,R>(Dependencies.<R> make());
     }
@@ -27,6 +31,13 @@ public class JIO<R,E,A> {
 
     public static <A> UJIO<Object, A> succeedWith(Supplier<A> fn) {
         return wrapU(ZIO.succeed(u -> fn.get(), Trace.empty()));
+    }
+
+    public static UJIO<Object, Object> succeedWith(Runnable fn) {
+        return wrapU(ZIO.succeed(u -> {
+            fn.run();
+            return null;
+        }, Trace.empty()));
     }
 
     public static <E,A> JIO<Object,E,A> fail(E failure) {
@@ -64,9 +75,17 @@ public class JIO<R,E,A> {
         }, Trace.empty())).<Object>unsafeCast().<X>unsafeCastError();
     }
 
+    /** Casts the given JIO to a less-specific generic type. */
     @SuppressWarnings("unchecked")
     public static <R,E,A> JIO<R,E,A> cast(JIO<? super R, ? extends E, ? extends A> jio) {
         return (JIO<R, E, A>) jio;
+    }
+
+    /** Casts the given JIO to a less-specific generic type. */
+    @SuppressWarnings("unchecked")
+    public static <R,A> UJIO<R,A> cast(UJIO<? super R, ? extends A> jio) {
+        return (UJIO<R,
+            A>) jio;
     }
 
     /** Runs another effect with the result of this one. This is functionally equivalent to this.flatMap(fn), but the static
@@ -217,6 +236,14 @@ public class JIO<R,E,A> {
     @SuppressWarnings("unchecked")
     <E1> JIO<R,E1,A> unsafeCastError() {
         return (JIO<R,E1,A>) this;
+    }
+
+    public <B> JIO<R,E,B> repeat(Schedule<? super R, ? super A, ? extends B> schedule) {
+        return new JIO<>(zio.repeat(() -> Schedule.<R,A,B>cast(schedule).schedule, Trace.empty()));
+    }
+
+    public <B> JIO<R,E,A> retry(Schedule<? super R, ? super E, ? extends B> schedule) {
+        return new JIO<>(zio.retry(() -> Schedule.<R,E,B>cast(schedule).schedule, null, Trace.empty()));
     }
 
     /// ------ only for JIO --------
