@@ -6,6 +6,8 @@ import java.util.function.Supplier;
 
 import net.ypmania.jio.function.CheckedFunction0;
 import net.ypmania.jio.function.CheckedRunnable;
+import net.ypmania.jio.tuple.Tuple;
+import net.ypmania.jio.tuple.Tuple2;
 import net.ypmania.ziojava.Dependencies;
 import scala.runtime.Nothing$;
 import zio.Trace;
@@ -244,6 +246,14 @@ public class JIO<R,E,A> {
 
     public <B> JIO<R,E,A> retry(Schedule<? super R, ? super E, ? extends B> schedule) {
         return new JIO<>(zio.retry(() -> Schedule.<R,E,B>cast(schedule).schedule, null, Trace.empty()));
+    }
+
+    public <B> JIO<R,E,Tuple2<A,B>> zip(JIO<? super R, ? extends E, ? extends B> that) {
+        return zipWith(that, Tuple::of);
+    }
+
+    public <B,O> JIO<R,E,O> zipWith(JIO<? super R, ? extends E, ? extends B> that, BiFunction<A,B,O> fn) {
+        return new JIO<R,E,Object>(zio.zip(() -> that.zio, (a,b) -> fn.apply(a,b), Trace.empty())).<O>unsafeCast();
     }
 
     /// ------ only for JIO --------

@@ -1,7 +1,10 @@
 package net.ypmania.jio;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import net.ypmania.jio.tuple.Tuple;
+import net.ypmania.jio.tuple.Tuple2;
 import net.ypmania.ziojava.Dependencies;
 import scala.runtime.Nothing$;
 import zio.Trace;
@@ -59,6 +62,14 @@ public class UJIO<R,A> {
 
     public <B> UJIO<R,B> repeat(Schedule<? super R, ? super A, ? extends B> schedule) {
         return new UJIO<>(zio.repeat(() -> Schedule.<R,A,B>cast(schedule).schedule, Trace.empty()));
+    }
+
+    public <B> UJIO<R,Tuple2<A,B>> zip(UJIO<? super R, ? extends B> that) {
+        return zipWith(that, Tuple::of);
+    }
+
+    public <B,O> UJIO<R,O> zipWith(UJIO<? super R, ? extends B> that, BiFunction<A,B,O> fn) {
+        return new UJIO<R,Object>(zio.zip(() -> that.zio, (a,b) -> fn.apply(a,b), Trace.empty())).<O>unsafeCast();
     }
 
     /// ------ only for UJIO --------

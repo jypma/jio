@@ -1,6 +1,7 @@
 package net.ypmania.jio;
 
 import de.tobiasroeser.lambdatest.junit5.FreeSpec;
+import net.ypmania.jio.tuple.Tuple;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -81,6 +82,14 @@ public final class JIOTest extends FreeSpec {
                 var withDeps = service2.provideFrom(service1);
                 var res = withDeps.provide("15");
                 assertThat(Runtime.runtime.unsafeRun(res).get(), equalTo(30));
+            });
+        });
+
+        section("zip", () -> {
+            test("should create tuple", () -> {
+                var effect = JIO.succeed(42).zip(JIO.succeed("hello"));
+                assertThat(Runtime.runtime.unsafeRun(effect).get(),
+                    equalTo(Tuple.of(42, "hello")));
             });
         });
 
