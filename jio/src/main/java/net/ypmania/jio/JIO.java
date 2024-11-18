@@ -230,6 +230,11 @@ public class JIO<R,E,A> {
         return map(a -> value);
     }
 
+    /** Returns a JIO that swaps the error / success cases */
+    public JIO<R, A, E> flip() {
+        return new JIO<>(zio.flip(Trace.empty()));
+    }
+
     @SuppressWarnings("unchecked")
     <U> JIO<R,E,U> unsafeCast() {
         return (JIO<R,E,U>) this;
@@ -258,12 +263,10 @@ public class JIO<R,E,A> {
 
     /// ------ only for JIO --------
 
-    // TODO: Test
     public <E1> JIO<R,E1,A> mapError(Function<? super E, ? extends E1> fn) {
         return new JIO<>(zio.mapError(e -> fn.apply(e), null, Trace.empty()));
     }
 
-    // TODO: Test
     public <E1> JIO<R,E1,A> flatMapError(Function<? super E, UJIO<? super R, ? extends E1>> fn) {
         return new JIO<>(zio.flatMapError(e -> fn.apply(e).<E1>unsafeCast().zio, null, Trace.empty()));
     }

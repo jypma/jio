@@ -113,6 +113,22 @@ public final class JIOTest extends FreeSpec {
             });
         });
 
+        section("mapError", () -> {
+            test("should change error type with type inference", () -> {
+                JIO<Object, String, Void> service = JIO.fail("42");
+                var res = service.mapError(s -> Integer.parseInt(s));
+                assertThat(Runtime.runtime.unsafeRun(res.flip().catchAllU(o -> JIO.succeed(0))).get(), equalTo(42));
+            });
+        });
+
+        section("flatMapError", () -> {
+            test("should change error type with type inference", () -> {
+                JIO<Object, String, Void> service = JIO.fail("42");
+                var res = service.flatMapError(s -> JIO.succeed(Integer.parseInt(s)));
+                assertThat(Runtime.runtime.unsafeRun(res.flip().catchAllU(o -> JIO.succeed(0))).get(), equalTo(42));
+            });
+        });
+
         section("scope", () -> {
             test("acquireRelease should release at end of scope", () -> {
                 var counter = new AtomicInteger();
